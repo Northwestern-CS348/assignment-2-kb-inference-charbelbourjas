@@ -128,6 +128,89 @@ class KnowledgeBase(object):
         printv("Retracting {!r}", 0, verbose, [fact_or_rule])
         ####################################################
         # Student code goes here
+
+        is_deleted = False
+
+        if isinstance(fact_or_rule, Fact):
+            #check if fact exists
+            if fact_or_rule in self.facts:
+                #index of the fact
+                index_fact = self.facts.index(fact_or_rule)
+
+
+                fact = self.facts[index_fact]
+                print("BP1: Fact Indexed")
+
+                if fact.asserted == True:
+                    fact.asserted = False
+
+                    if len(fact.supported_by) == 0:
+                        del self.facts[index_fact]
+                        is_deleted = True
+                        print("BP2: Fact not supported")
+
+
+                if is_deleted == True:
+
+                    for f in fact.supports_rules:
+                        for y in f.supported_by:
+
+                            if y[0] == fact:
+                                index_2 = self.rules.index(f)
+                                rule2 = self.rules[index_2]
+                                rule2.supported_by.remove(y)
+
+                                if len(rule2.supported_by) == 0:
+                                    self.kb_retract(rule2)
+
+                    for f in fact.supports_facts:
+                        for y in f.supported_by:
+
+                            if y[0] == fact:
+                                index_2 = self.facts.index(f)
+                                fact2 = self.facts[index_2]
+                                fact2.supported_by.remove(y)
+
+                                if len(fact2.supported_by) == 0:
+                                    self.kb_retract(fact2)
+
+
+
+            elif isinstance(fact_or_rule, Rule):
+
+                if fact_or_rule in self.rules:
+                    index_rule = self.rules.index(fact_or_rule)
+                    rule = self.rules[index_rule]
+
+                    if rule.asserted == False:
+                        if len(rule.supported_by) == 0:
+                            del self.rules[index_rule]
+                            is_deleted = True
+
+                    if is_deleted == True:
+                        for x in rule.supports_facts:
+                            for y in x.supported_by:
+                                if y[1] == rule:
+                                    index_2 = self.facts.index(x)
+                                    fact2 = self.facts[index_2]
+                                    fact2.supported_by.remove(y)
+
+                                    if len(fact2.supported_by) == 0:
+                                        self.kb_retract(fact2)
+
+                        for x in rule.supports_rules:
+                            for y in x.supported_by:
+                                if y[1] == rule:
+                                    index_2 = self.facts.index(x)
+                                    rule2 = self.facts[index_2]
+                                    rule2.supported_by.remove(j)
+
+                                    if len(rule2.supported_by) == 0:
+                                        self.kb_retract(rule2)
+
+
+
+
         
 
 class InferenceEngine(object):
@@ -146,3 +229,37 @@ class InferenceEngine(object):
             [fact.statement, rule.lhs, rule.rhs])
         ####################################################
         # Student code goes here
+
+        #we want to check if there is a set of bindings that match
+        bindings = match(fact.statement, rule.lhs[0])
+
+        #if so
+        if bindings:
+
+            #if it has more than 1, it has multiple statements
+            if len(rule.lhs) > 1:
+                db = []
+                #create new rule
+
+                for i in range(len(rule.lhs)-1):
+                    db.append(instantiate(rule.lhs[i+1], bindings))
+
+                db = [db, instantiate(rule.rhs, bindings)]
+                rulex=Rule(db) #new
+                rulex.supported_by.append([fact,rule])
+
+
+                kb.kb_assert(rulex)
+                rule.supports_rules.append(rulex) #make sure this is correct*
+                fact.supports_rules.append(rulex)
+
+            else:
+
+                #we create a new rule that eliminates the first statement
+                factx = Fact(instantiate(rule.rhs,bindings))
+                factx.supported_by.append([fact,rule])
+
+                rule.supports_facts.append(factx)
+                fact.supports_facts.append(factx)
+                kb.kb_assert(factx)
+
